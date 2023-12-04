@@ -1,0 +1,189 @@
+PCoA
+library(ggplot2)
+library(vegan)
+library(ape)
+library(plyr)
+df<-read.csv("otu.csv",row.names = 1)
+aa<-df[,c(1:36)]
+Treat<-data.frame(c(rep(c("Mu"),6),rep(c("WT"),6),rep(c("OX"),6),rep(c("CdMu"),6),rep(c("CdWT"),6),rep(c("CdOX"),6)))
+Group<-data.frame(c(rep(c("CK"),18),rep(c("Cd"),18)))
+data <- vegdist(t(aa), method = "bray")
+pcoa<- pcoa(data, correction = "none", rn = NULL)
+PCA1 = pcoa$vectors[,1]
+PCA2 = pcoa$vectors[,2]
+index<- data.frame(rownames(pcoa$vectors),PCA1,PCA2,Group,Treat)
+colnames(index) <-c("sample","PCA1","PCA2","Group","Treat")
+pca1 <-floor(pcoa$values$Relative_eig[1]*100)
+pca2 <-floor(pcoa$values$Relative_eig[2]*100)
+ggplot(index, aes(PCA1, PCA2,shape=Group))+ geom_point(aes(color=Treat),size=4)+
+  xlab(paste("PCoA1 ( ",pca1,"%"," )",sep=""))+ 
+  ylab(paste("PCoA2 ( ",pca2,"%"," )",sep=""))+
+  #stat_ellipse(linetype="longdash",size=0.9,color="gray32")+
+  #geom_polygon(data = index,aes(fill =Treat),alpha = 0.5,show.legend = FALSE) +
+  scale_color_manual(values=c("#1373B2","#EF8A47","#F7AA58","#FFD06F","#FFE6B7","#E76254"))+ 
+scale_fill_manual(values=c("#1373B2","#EF8A47","#F7AA58","#FFD06F","#FFE6B7","#E76254"))+ theme_bw()+ 
+  theme(axis.text=element_text(colour='black',size=18))+
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank())
+
+
+Volcano plot
+library(ggplot2)
+data <- read.csv("1111.csv",row.names = 1)
+head(data)
+data$label <- c(rownames(data)[1:10],rep(NA,(nrow(data)-10)))
+ggplot(data,aes(log2FoldChange, -log10(padj)))+
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "#999999")+
+  geom_vline(xintercept = c(-1.2,1.2), linetype = "dashed", color = "#999999")+
+  geom_point(aes(size=-log10(padj), color= -log10(padj)))+
+  scale_color_gradientn(values = seq(0,1,0.2),
+                        colors = c("#39489f","#39bbec","#f9ed36","#f38466","#b81f25"))+
+  scale_size_continuous(range = c(1,3))+
+  theme_bw()+
+  theme(panel.grid = element_blank(),
+        legend.position = c(0.01,0.7),
+        legend.justification = c(0,1)
+  )+
+  guides(col = guide_colourbar(title = "-Log10_q-value"),
+         size = "none")+
+  geom_text(aes(label=label, color = -log10(padj)), size = 3, vjust = 1.5, hjust=1)+
+  xlab("Log2FC")+
+  ylab("-Log10(FDR q-value)")
+
+Box plot
+library(ggplot2)
+library(RColorBrewer)
+library(ggsci)
+library(ggpubr)
+aa<-read.csv("J://test/test_otu.csv",row.names = 1)
+df<-aa[21:220,1:3]
+#df<- as.data.frame(scale(df))
+Group<-data.frame(c(rep(c(4:8,4:8,4:8,4:8),10)),c(rep(c(1),50)))
+colnames(Group)<-c("Shannon","Group")
+df<-cbind(df,Group)
+df$pH<-as.factor(df$Shannon)
+df$Sample3<-"Box plot"
+p1=ggplot(df, aes(x=Shannon, y=Sample2,color=Shannon))+
+  stat_boxplot(geom="errorbar",position=position_dodge(width=0.2),width=0.3,size=1)+
+  geom_boxplot(aes(),notch = F,size=0.7)+
+  geom_jitter(size = 2.5,alpha = 0.6,width = 0.2)+ 
+  theme_bw()+scale_color_npg()+scale_fill_npg()+
+  theme(axis.text=element_text(colour='black',size=9))+
+  labs(x="Metabolic", y="Growth", color = "Shannon",fill = "Shannon")+
+  facet_grid( ~Sample3, drop=TRUE,scale="free", space="free_x")+
+  theme(strip.background = element_rect(fill=c("white")))+
+  theme(strip.text = element_text(size = 12,face = 'bold',colour = "gray2"))+
+  theme(axis.text=element_text(colour='black',size=11))
+plot_data2<-df
+mean_df<-aggregate(plot_data2[,1:2],by=list(plot_data2[,4]),FUN=mean)
+rownames(mean_df)<-mean_df[,1]
+sd_df<-aggregate(plot_data2[,1:2],by=list(plot_data2[,4]),FUN=sd)
+rownames(sd_df)<-sd_df[,1]
+sd_df<-sd_df[,-1]
+se_df<-sd_df/sqrt(40) # n=40
+se<-as.data.frame(se_df)
+plot_data1<-cbind(mean_df,se)
+colnames(plot_data1)<-c("Shannon","Sample1","Sample2","se1","se2")
+#barplot
+df$Sample3<-"Bar plot"
+#barplot
+p2=ggplot(df, aes(x=Shannon, y=Sample1,color=Shannon))+
+  geom_bar(data=plot_data1,mapping=aes(x=Shannon,y=Sample1,fill=Shannon), size = 1.03,position="dodge", stat="identity",width = 0.7)+
+  geom_errorbar(data=plot_data1,mapping=aes(x=Shannon,ymin=Sample1-se1, ymax=Sample1+se1),width = 0.3,size=0.8)+
+  geom_jitter(size = 2.5,alpha = 0.6,width = 0.2)+ 
+  theme_bw()+scale_color_npg()+scale_fill_npg()+
+  theme(axis.text=element_text(colour='black',size=9))+
+  labs(x="Metabolic", y="Growth", color = "Shannon",fill = "Shannon")+
+  facet_grid( ~Sample3, drop=TRUE,scale="free", space="free_x")+
+  theme(strip.background = element_rect(fill=c("white")))+
+  theme(strip.text = element_text(size = 12,face = 'bold',colour = "gray2"))+
+  theme(axis.text=element_text(colour='black',size=11))
+
+network
+library(Hmisc)
+otu=read.table("otu.txt", head=T, row.names=1)
+occor <- rcorr(as.matrix(otu),type = 'spearman')
+occor.r <-  occor$r 
+occor.p <-  occor$P 
+occor.p<-p.adjust(occor.p, method="BH")
+occor.r[occor.p<0.01|abs(occor.r)<0.8] = 0
+diag(occor.r) <- 0
+write.csv(occor.r,file="NOC.csv")
+
+PCA
+rm(list = ls())
+data0 = read.table("S.txt", header=TRUE,sep='\t',row.names=1)
+library(ggplot2)
+library(ggrepel)
+#devtools::install_github("vqv/ggbiplot")
+library(ggbiplot)
+library(RColorBrewer)
+library(grid)
+cols <- c("Heat-killed" = "grey", "SynCom1" = "#e64b35", "SynCom2" = "#3c5488", "SynCom3" = "#91d1c2")
+mydata1 = t(as.matrix(data0))
+mydata.pca <- prcomp(log(mydata1+1))
+scores <- mydata.pca$x
+scores=data.frame(scores)
+rownames(scores)=colnames(data0)
+scores$Subtype = c("Heat-killed",'SynCom3',rep("SynCom1",33),"SynCom2","SynCom2","SynCom1",rep("Heat-killed",3),'SynCom2',rep("Heat-killed",2),rep("SynCom1",3),'SynCom2')
+N1=as.character(round(summary(mydata.pca)$importance[3,1],2))
+N2=as.character(round(summary(mydata.pca)$importance[3,2]-summary(mydata.pca)$importance[3,1],2))
+N3=as.character(round(summary(mydata.pca)$importance[3,3]-summary(mydata.pca)$importance[3,2],2))
+xl=paste("PC1 ","(",N1,")",sep='')
+yl=paste("PC2 ","(",N2,")",sep='')
+zl=paste("PC3 ","(",N3,")",sep='')
+mytheme<-theme_test()+  
+  theme(panel.background = element_rect(fill = "white", colour = "black"),
+        panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5,size = 15),
+        axis.text = element_text(size = 8),axis.title = element_text(size = 12,face="bold"),
+        legend.text = element_text(size = 12),legend.title = element_text(size = 15),
+        plot.margin = unit(c(0.2,0.2,0.2,0.2),'cm'))
+ggplot(scores, aes(PC1, PC2,colour = Subtype)) +
+    geom_point(size=3.5) +
+    xlab(xl) + ylab(yl)  + scale_colour_manual(values = cols) +
+  mytheme+
+  theme(legend.position = c(0.9,0.3),
+        legend.key  = element_rect(fill = 'grey95'))
+
+Heatmap
+library(openxlsx)
+data<- read.xlsx("Genus.xlsx", sheet = 1, startRow = 1, colNames = TRUE, rowNames = TRUE, detectDates = FALSE, skipEmptyRows = TRUE, skipEmptyCols = TRUE, rows = NULL, cols = NULL, check.names = FALSE, sep.names = ".", namedRegion = NULL, na.strings = "NA", fillMergedCells = FALSE)
+data
+# data<-cor(data,method = "spearman")
+# Samplegroup= read.xlsx("D://test",header = T,row.names = 1,fill = T,sep = "\t")
+library(pheatmap)
+# ?pheatmap
+pheatmap(data,scale = "none")
+pheatmap(data,scale = "row")
+pheatmap(data,scale = "column")
+annotation_col=data.frame(Sample=factor(c(rep("M1",3),rep("M2",3),rep("M3",3),rep("M4",3)))) 
+row.names(annotation_col) = colnames(data) 
+ann_colors = list(Sample = c(M1="#E889BD", M2="#B286D7", M3="#5189E0", M4="#0089CF"))
+pheatmap(data, 
+         scale = "row",
+         cluster_cols = FALSE, clustering_distance_rows = "correlation",
+         treeheight_row = 30,
+         annotation_col = annotation_col,
+         annotation_colors = ann_colors
+
+KEGG
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("tidyverse")
+install.packages("openxlsx")
+library (dplyr)
+library (ggplot2)
+library(tidyverse)
+library(openxlsx)
+kk_result= read.xlsx('C:/Rdata/jc/enrich-gene.xlsx', sheet= "KEGG", sep = ',')
+display_number = 30
+kk_result = as.data.frame(kk_result)[1:display_number[1], ]
+kk = as.data.frame(kk_result)
+rownames(kk) = 1:nrow(kk)
+kk$order=factor(rev(as.integer(rownames(kk))),labels = rev(kk$Description))
+ggplot(kk,aes(y=order,x=Gene_Ratio))+
+     geom_point(aes(size=Count,color=PValue))+
+     scale_color_gradient(low = "red",high ="blue")+
+     labs(color=expression(PValue,size="Count"),
+       x="Gene Ratio",y="Pathways",title="KEGG Pathway Enrichment")+
+  theme_bw()
